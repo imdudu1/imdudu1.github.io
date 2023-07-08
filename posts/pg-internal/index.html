@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en-us"><head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+   <meta name="description" content="Query planner/optimizer pg에서 planner(이하, 플래너), optimizer(이하, 옵티마이저)는 쿼리를 최적 실행 계획을 만드는 데 사용된다. 따라서 주어진 쿼리는 매우 다양한 방식으로 실행될 수 있다.
+Postgresql(이하, pg)는 플래너와 옵티마이저를 통해 실행 가능한 모든 방법을 검토하는데, 이 작업이 많은 시간과 메모리를 낭비할 수 있다. 특히, 많은 수의 join이 포함된 쿼리에 대해서 자주 발생하게 된다. 이 경우 합리적인 시간에 계산을 위해 Genetic Query Optimization(GEQO)를 사용한다.
+플래너는 경로라는 데이터 구조로 작동하며, 경로는 플래너가 결정하는데 필요한 정보를 포함하는 자료구조이다.">  
+
+  <title>
+    
+      Pg Internal
+    
+  </title>
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/" />
+  
+  
+  
+  <link rel="stylesheet" href="/css/main.10776b9b86bf7e3aca232a6c5e4fbdc3baacf45c0cc3a1802995836aa1689368e8fadebd3e46fdc9ad87eab1f834f5bbb28dbb2b23fea73ae3e57c258caef3bd.css" integrity="sha512-EHdrm4a/fjrKIypsXk&#43;9w7qs9FwMw6GAKZWDaqFok2jo&#43;t69Pkb9ya2H6rH4NPW7so27KyP&#43;pzrj5XwljK7zvQ==" />
+  
+</head>
+<body a="auto">
+        <main class="page-content" aria-label="Content">
+            <div class="w">
+<a href="/">..</a>
+
+<article>
+    <p class="post-meta">
+        <time datetime="2023-07-01 16:43:07 &#43;0900 KST">
+            2023-07-01
+        </time>
+    </p>
+
+    <h1>Pg Internal</h1>
+
+    
+
+    <h2 id="query-planneroptimizer">Query planner/optimizer</h2>
+<p>pg에서 planner(이하, 플래너), optimizer(이하, 옵티마이저)는 쿼리를 최적 실행 계획을 만드는 데 사용된다. 따라서 주어진 쿼리는 매우 다양한 방식으로 실행될 수 있다.</p>
+<blockquote>
+<p>Postgresql(이하, pg)는 플래너와 옵티마이저를 통해 실행 가능한 모든 방법을 검토하는데, 이 작업이 많은 시간과 메모리를 낭비할 수 있다. 특히, 많은 수의 join이 포함된 쿼리에 대해서 자주 발생하게 된다. 이 경우 합리적인 시간에 계산을 위해 Genetic Query Optimization(GEQO)를 사용한다.</p>
+</blockquote>
+<p>플래너는 <code>경로</code>라는 데이터 구조로 작동하며, 경로는 플래너가 결정하는데 필요한 정보를 포함하는 자료구조이다. 이렇게 경로가 결정되면 <code>계획</code>트리가 생성되고, 실행자에게 전달된다.</p>
+<h3 id="가능한-계획-생성">가능한 계획 생성</h3>
+<p>플래너/옵티마이저는 쿼리에 사용된 각 테이블을 스캔하기 위한 계획을 생성하는 것으로 시작한다. 각 관계에서 사용 가능한 계획은 인덱스에 의해 결정된다. 여기서 각 관계에 대해서 순차 스캔을 수행할 가능성은 항상 존재하므로, 순차 스캔 계획은 항상 생성된다. 만약 테이블에 인덱스가 생성되고 있고 쿼리에 포함된 인덱스가 일치한 경우 추가적인 계획이 만들어진다. 만약 추가 인덱스 정보가 있는 경우 추가적인 계획이 생성된다.</p>
+<p>쿼리에 두 개이상의 join이 존재하는 경우 관계 조인 계획이 생성된다. join 전략에서는 다음 세 가지 전략이 존재한다.</p>
+<ul>
+<li>중첩 루프 조인
+<ul>
+<li>왼쪽 테이블에서 행이 발견될 때마다 오른쪽 테이블을 한 번씩 스캔한다. 구현이 쉽지만 성능상 문제가 발생할 수 있다.(단, 인덱스를 통해 오른쪽 테이블을 스캔하는 경우 좋은 전략이 될 수 있다.)</li>
+</ul>
+</li>
+<li>병합 조인
+<ul>
+<li>join 연산 수행 전 두 테이블을 join 특성에 맞게 정렬한 후, 두 테이블을 한 번 병렬로 스캔하여 일치하는 행을 결합하여 결과를 만든다.</li>
+</ul>
+</li>
+<li>해시 조인
+<ul>
+<li>오른쪽 테이블을 스캔하여 join 속성을 해시 키로 해시 테이블에 로드한다. 그 후 왼쪽 테이블을 스캔하고 발견된 모든 행의 적절한 해시 키로 사용하여 행을 찾는다.</li>
+</ul>
+</li>
+</ul>
+<p>이렇듯 geqo_threshold 보다 적은 수의 관계를 사용하는 경우 최상의 계획을 생성하기 위해서 모든 조인 시퀀스에 대해서 검사하게 된다. 플래너는 where 조건에 포함된 테이블(where rel1.attr1 = rel2.attr2) 간의 조인을 우선적으로 고려한다.</p>
+<h3 id="실행자">실행자</h3>
+<p>실행자는 플래너/옵티마이저에서 생성된 계획을 재귀적으로 처리하여 필요한 행 집합을 추출한다. 예를 들어 MergeJoin 노드를 가정하면, 병합을 수행하기 위해서 두 개의 행을 가져와야 한다. 따라서 실행자는 재귀적으로 자신을 호출하여 서브플랜을 처리한다. 이때 왼쪽 트리에 연결된 서브플랜부터 시작한다.</p>
+<p>Sort 노드로 가정하면, 자식 노드가 순차적으로 행을 읽는 SeqScan 노드의 경우 반복적으로 호출하여 정렬한 모든 행을 가져온다. 입력이 모두 소진되면 NULL을 반환하여 더이상 가져올 행이 없다는 것을 알려준다. 모든 행을 가져온 Sort 노드는 해당 행을 정렬한 후 자신을 호출하면 첫 번째 행(정렬된 가상 처음 행)을 돌려준다. 이때 나머지 행을 이후 호출을 위해 보관하고 있게 된다.</p>
+<p>실행기 메커니즘은 5가지 기본 SQL 쿼리 유형을 평가하게 되는데, SELECT, INSERT, UPDATE, DELETE 및 MERGE이다. SELECT의 경우 쿼리 플랜 트리에서 반환된 각 행을 클라이언트로 전송하기만 하면 된다.
+그 외 INSERT, DELETE, UPDATE, MERGE의 경우 ModifyTable 최상위 계획 노드 아래 SELECT가 있는 형태로 동작하게 된다.</p>
+<p>UPDATE의 경우 플래너는 계산된 각 행에 업데이트된 모든 열 값과 원래 대상 행위 TID가 포함되도록 정렬하며, 이 정보를 사용하여 업데이트된 새 행을 생성하고, 이전 행을 삭제된 것으로 표시하는 정보를 ModifyTable 노드에 공급한다.</p>
+<p>DELETE의 경우 계획에서 실제로 반환되는 유일한 열은 TID로, ModifyTable 노드에 공한다. 반환된 TID를 이용해 ModifyTable 노드는 대상 행을 방문하여 삭제된 것으로 표시한다.</p>
+<h2 id="참고">참고</h2>
+<ul>
+<li><a href="https://www.postgresql.kr/docs/9.6/geqo-pg-intro.html">PostgreSQL 유전 쿼리 최적화 Genetic Query Optimization (GEQO)</a></li>
+</ul>
+
+</article>
+
+            </div>
+        </main>
+    </body></html>

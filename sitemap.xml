@@ -2,6 +2,12 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>http://example.org/posts/pg-internal/</loc>
+    <lastmod>2023-07-01T16:43:07+09:00</lastmod>
+  </url><url>
+    <loc>http://example.org/posts/</loc>
+    <lastmod>2023-07-01T16:43:07+09:00</lastmod>
+  </url><url>
     <loc>http://example.org/</loc>
     <lastmod>2022-08-25T21:30:04+08:00</lastmod>
   </url><url>
