@@ -8,6 +8,17 @@
     <language>en-us</language>
     <lastBuildDate>Thu, 25 Aug 2022 21:30:04 +0800</lastBuildDate><atom:link href="http://example.org/index.xml" rel="self" type="application/rss+xml" />
     <item>
+      <title>웹 서비스 인프라 구성 연습장</title>
+      <link>http://example.org/posts/web-infra-practice/</link>
+      <pubDate>Thu, 20 Jul 2023 11:06:31 +0900</pubDate>
+      
+      <guid>http://example.org/posts/web-infra-practice/</guid>
+      <description>이 글은 웹 서비스가 제공되기 위한 전체적인 인프라 구성을 연습하기 위한 백엔드 개발자의 발버둥이 담기 글입니다.
+들어가며 업무를 하다보면 지금 다른 팀원들에 비해서 인프라 역량이 많이 떨어진다는 생각을 많이 들게 된다. 가끔 코드에서 발생하는 것이 아니라, HTTP 응답이나 외부 서비스 연결 문제로 인해 문제가 발생했을 때 인프라에 대한 전체적인 그림이 없으니 무지성으로 DevOps 팀에 요청하는 일이 종종 있었다.
+사실 인프라적인 지식이 있었다면 직접 설정을 수정하지는 못해도 설정된 값들과 연관 관계를 이해하면, 어느 지점에서 문제가 발생하고 있는지 알 수 있고, 코드 구조 뿐만 아니라 인프라 구조를 그릴 수 있다면 더 효율적인 문제해결 방법을 떠오를 수 있지만, 지금은 코드 구조 안에서 문제를 해결하려는 생각이 더 강하다는 느낌이 들었다.</description>
+    </item>
+    
+    <item>
       <title>Pg Internal</title>
       <link>http://example.org/posts/pg-internal/</link>
       <pubDate>Sat, 01 Jul 2023 16:43:07 +0900</pubDate>

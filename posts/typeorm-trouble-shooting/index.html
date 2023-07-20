@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en-us"><head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+   <meta name="description" content="도입 최근 typeorm 버전업 작업을 팀원이 진행해주셨다. 기존에 typeorm의 버전이 낮고, 또 0.3.x로 넘어가면서 breaking-change가 생기면서 좀처럼 버전 업을 진행하지 못했는데, 팀원분이 끈기 있게 작업 해주셔서 무사히 typeorm 0.3.x를 개발환경에서 배포 후 정상 동작까지 확인할 수 있었다.
+하지만 막상 운영 배포를 진행하고, QA에서 누락된 API 하나에서 transaction abort error가 발생하면서 모니터링 도구를 빨갛게 물들이는 사태가 발생했다. 다행이 데이터를 오염시키는 것이 아니라 트랜잭션이 취소되면서 데이터가 초기상태로 돌아와 그나마 불행 중 다행이라고 생각하는 반면 왜 이런 일이 발생했는지 도무지 이유를 찾을 수 없었다.">  
+
+  <title>
+    
+      Typeorm 연관 관계 entity null-violation 해결기
+    
+  </title>
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/" />
+  
+  
+  
+  <link rel="stylesheet" href="/css/main.10776b9b86bf7e3aca232a6c5e4fbdc3baacf45c0cc3a1802995836aa1689368e8fadebd3e46fdc9ad87eab1f834f5bbb28dbb2b23fea73ae3e57c258caef3bd.css" integrity="sha512-EHdrm4a/fjrKIypsXk&#43;9w7qs9FwMw6GAKZWDaqFok2jo&#43;t69Pkb9ya2H6rH4NPW7so27KyP&#43;pzrj5XwljK7zvQ==" />
+  
+</head>
+<body a="auto">
+        <main class="page-content" aria-label="Content">
+            <div class="w">
+<a href="/">..</a>
+
+<article>
+    <p class="post-meta">
+        <time datetime="2023-07-20 00:20:38 &#43;0900 KST">
+            2023-07-20
+        </time>
+    </p>
+
+    <h1>Typeorm 연관 관계 entity null-violation 해결기</h1>
+
+    
+
+    <h2 id="도입">도입</h2>
+<p>최근 typeorm 버전업 작업을 팀원이 진행해주셨다. 기존에 typeorm의 버전이 낮고, 또 0.3.x로 넘어가면서 breaking-change가 생기면서 좀처럼 버전 업을 진행하지 못했는데, 팀원분이 끈기 있게 작업 해주셔서 무사히 typeorm 0.3.x를 개발환경에서 배포 후 정상 동작까지 확인할 수 있었다.</p>
+<p>하지만 막상 운영 배포를 진행하고, QA에서 누락된 API 하나에서 transaction abort error가 발생하면서 모니터링 도구를 빨갛게 물들이는 사태가 발생했다. 다행이 데이터를 오염시키는 것이 아니라 트랜잭션이 취소되면서 데이터가 초기상태로 돌아와 그나마 불행 중 다행이라고 생각하는 반면 왜 이런 일이 발생했는지 도무지 이유를 찾을 수 없었다.</p>
+<p>transaction이 abort가 되었던 원인은 연관 관계 컬럼에 not-null violation이 걸려있었는데, typeorm 내부에서 이 컬럼에 대해서 null update를 수행했기 때문이였다. 그리고 내가 예상했던 쿼리가 거의 20번에 가까운 쿼리가 실행되는 문제도 함께 존재했다.</p>
+<p>그 중 14번개의 쿼리 중 7개는 불필요한 UPDATE, 그리고 나머지 7개는 NULL UPDATE였는데, 복잡한 연관 관계도 아닌 조회 후 수정 저장이란 단순한 플로우에서 왜 이런 일이 발생하는지 도무지 이해할 수 없었다. 문제 원인을 빠르게 파악하지 못해 일단은 배포했던 코드를 되돌려서 서비스를 안정화 시킨 후 이후 정확한 원인을 분석하게 되었다.</p>
+<h2 id="typeorm">TypeORM</h2>
+<p>현재 우리 서비스는 Nest.js와 TypeORM을 함께 사용해 운영되고 있다. 그리고 많은 사람들이 알듯 TypeORM이 0.3.x 으로 올라가면서 많은 breaking-change가 있어 운영되고 있는 서비스에서 버전업을 하기에 많은 변경점이 있었다. 특히 테스트 코드를 편하게 작성하기 위해 사용했던 유틸리티 함수들이 발목을 많이 잡았는데 이 부분을 팀원이 정말 고생하시면서 작업해주셨다. (이번 기회에 글로벌 변수가 얼마나 변경에 취약한지 옆에서 경험하게 되어서 감사의 인사를..)</p>
+
+</article>
+
+            </div>
+        </main>
+    </body></html>

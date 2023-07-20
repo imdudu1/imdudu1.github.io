@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en-us"><head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+   <meta name="description" content="이 글은 웹 서비스가 제공되기 위한 전체적인 인프라 구성을 연습하기 위한 백엔드 개발자의 발버둥이 담기 글입니다.
+들어가며 업무를 하다보면 지금 다른 팀원들에 비해서 인프라 역량이 많이 떨어진다는 생각을 많이 들게 된다. 가끔 코드에서 발생하는 것이 아니라, HTTP 응답이나 외부 서비스 연결 문제로 인해 문제가 발생했을 때 인프라에 대한 전체적인 그림이 없으니 무지성으로 DevOps 팀에 요청하는 일이 종종 있었다.
+사실 인프라적인 지식이 있었다면 직접 설정을 수정하지는 못해도 설정된 값들과 연관 관계를 이해하면, 어느 지점에서 문제가 발생하고 있는지 알 수 있고, 코드 구조 뿐만 아니라 인프라 구조를 그릴 수 있다면 더 효율적인 문제해결 방법을 떠오를 수 있지만, 지금은 코드 구조 안에서 문제를 해결하려는 생각이 더 강하다는 느낌이 들었다.">  
+
+  <title>
+    
+      웹 서비스 인프라 구성 연습장
+    
+  </title>
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/" />
+  
+  
+  
+  <link rel="stylesheet" href="/css/main.10776b9b86bf7e3aca232a6c5e4fbdc3baacf45c0cc3a1802995836aa1689368e8fadebd3e46fdc9ad87eab1f834f5bbb28dbb2b23fea73ae3e57c258caef3bd.css" integrity="sha512-EHdrm4a/fjrKIypsXk&#43;9w7qs9FwMw6GAKZWDaqFok2jo&#43;t69Pkb9ya2H6rH4NPW7so27KyP&#43;pzrj5XwljK7zvQ==" />
+  
+</head>
+<body a="auto">
+        <main class="page-content" aria-label="Content">
+            <div class="w">
+<a href="/">..</a>
+
+<article>
+    <p class="post-meta">
+        <time datetime="2023-07-20 11:06:31 &#43;0900 KST">
+            2023-07-20
+        </time>
+    </p>
+
+    <h1>웹 서비스 인프라 구성 연습장</h1>
+
+    
+
+    <blockquote>
+<p>이 글은 웹 서비스가 제공되기 위한 전체적인 인프라 구성을 연습하기 위한 백엔드 개발자의 발버둥이 담기 글입니다.</p>
+</blockquote>
+<h2 id="들어가며">들어가며</h2>
+<p>업무를 하다보면 지금 다른 팀원들에 비해서 인프라 역량이 많이 떨어진다는 생각을 많이 들게 된다. 가끔 코드에서 발생하는 것이 아니라, HTTP 응답이나 외부 서비스 연결 문제로 인해 문제가 발생했을 때 인프라에 대한 전체적인 그림이 없으니 무지성으로 DevOps 팀에 요청하는 일이 종종 있었다.</p>
+<p>사실 인프라적인 지식이 있었다면 직접 설정을 수정하지는 못해도 설정된 값들과 연관 관계를 이해하면, 어느 지점에서 문제가 발생하고 있는지 알 수 있고, 코드 구조 뿐만 아니라 인프라 구조를 그릴 수 있다면 더 효율적인 문제해결 방법을 떠오를 수 있지만, 지금은 코드 구조 안에서 문제를 해결하려는 생각이 더 강하다는 느낌이 들었다.</p>
+<p>그래서 이번에 기초적인 클라우드 환경에서 운영되는 웹 서비스 인프라 구조를 직접 구성해보면서 AWS에서 제공되는 다양한 서비스를 이용해보는 시간을 가지려고 한다. 브라우저를 통해서 설정하는 것도 좋은 기회지만 나는 구성하고 빠르게 다시 원복(구성된 동안 비용이 계속 발생하니깐&hellip; 🤣) 을 해야하기 때문에 Terraform을 이용해 보기로 했다.</p>
+<p><img src="https://i.imgur.com/2TYgsGR.png" alt="img"></p>
+<p>목표는 AWS 문서에서 작성된 형태로 구성해볼 예정이다. 이 구조를 선택한 이유는 일단 학습 목적을 우선으로 하여 최대한 많은 AWS 서비스를 이용해보고 복잡한 인프라 구조를 구성해보는 경험이 필요하기 때문이다. 마지막으로 각 서비스의 필요성을 학습 하면서 마무리를 할 예정이다.</p>
+<h2 id="private-key-생성">Private key 생성</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;tls_private_key&#34;</span> <span style="color:#e6db74">&#34;application_private_key&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  algorithm <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;RSA&#34;</span>
+</span></span><span style="display:flex;"><span>  rsa_bits  <span style="color:#f92672">=</span> <span style="color:#ae81ff">4096</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_key_pair&#34;</span> <span style="color:#e6db74">&#34;application_key_pair&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  key_name   <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;application-key-pair&#34;</span> <span style="color:#75715e"># Replace with your desired key pair name</span>
+</span></span><span style="display:flex;"><span>  public_key <span style="color:#f92672">=</span> tls_private_key.application_private_key.public_key_openssh
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span></code></pre></div><p>EC2 instance를 실행하기 전 원격 서버에 접속하기 위해 사용될 수 있는 비밀키/공개키 형태의 암호화 키를 생성할 필요가 있다. terraform은 <code>tls_private_key</code>와 <code>aws_key_pair</code> 리소스를 이용해 간단히 관리할 수 있다.</p>
+
+</article>
+
+            </div>
+        </main>
+    </body></html>
