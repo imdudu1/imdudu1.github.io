@@ -57,7 +57,118 @@
 </span></span><span style="display:flex;"><span>  public_key <span style="color:#f92672">=</span> tls_private_key.application_private_key.public_key_openssh
 </span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
 </span></span></code></pre></div><p>EC2 instance를 실행하기 전 원격 서버에 접속하기 위해 사용될 수 있는 비밀키/공개키 형태의 암호화 키를 생성할 필요가 있다. terraform은 <code>tls_private_key</code>와 <code>aws_key_pair</code> 리소스를 이용해 간단히 관리할 수 있다.</p>
-
+<h2 id="vpc">VPC</h2>
+<p>VPC는 네트워크 영역을 논리적인 단위로 분리하는 것으로 사용자는 이를 통해서 Private/Public network zone을 구성할 수 있게 된다.  사용자는 서비스 성격에 맞게 외부 접근을 관리할 수 있으며 물리적인 네트워크 구성을 설치할 필요없이 하나의 네트워크망 안에서 마치 여러 네트워크를 이용하는 것처럼 사용할 수 있다. 비용적인 부분과 관리 측면에서도 매우 효과적인 방법이라고 생각된다.</p>
+<p>이번에는 DMZ(Demilitarized Zone)와 Application으로 VPC를 구분해서 구성할 예정이다. 여기서 DMZ는 신뢰할 수 없는 외부 영역과 내부 영역 사이에 위치한 네트워크 영역으로 이 영역은 외부에서 내부로 전달되는 네트워크 트래픽에 대한 보안 및 버퍼 역할을 하게된다. 이로서 DMZ에는 내부 네트워크와 다른 보안 정책을 구성할 수 있다.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_vpc&#34;</span> <span style="color:#e6db74">&#34;dmz&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  cidr_block           <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;10.1.0.0/16&#34;</span>
+</span></span><span style="display:flex;"><span>  enable_dns_support   <span style="color:#f92672">=</span> true
+</span></span><span style="display:flex;"><span>  enable_dns_hostnames <span style="color:#f92672">=</span> true
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_vpc&#34;</span> <span style="color:#e6db74">&#34;application&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  cidr_block           <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;10.2.0.0/16&#34;</span>
+</span></span><span style="display:flex;"><span>  enable_dns_support   <span style="color:#f92672">=</span> true
+</span></span><span style="display:flex;"><span>  enable_dns_hostnames <span style="color:#f92672">=</span> true
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span></code></pre></div><p>참고한 블로그에서 VPC 내 동일한 CIRD block으로 구성하면 이후 VPC connection peering이 어려울 수 있다고 들어서 각각 <code>10.1.0.0/16</code>, <code>10.2.0.0./16</code>으로 구성했다.</p>
+<h3 id="subnet">Subnet</h3>
+<p>Subnet(이하, 서브넷)은 VPC를 더 작은 영역으로 구분할 수 있다. 서브넷은 VPC의 IP 주소 범위 내에서 잘게 구분될 수 있다.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#75715e"># DMZ Public Subnets</span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_subnet&#34;</span> <span style="color:#e6db74">&#34;dmz_public_primary&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  vpc_id            <span style="color:#f92672">=</span> aws_vpc.dmz.id
+</span></span><span style="display:flex;"><span>  cidr_block        <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;10.1.1.0/24&#34;</span>
+</span></span><span style="display:flex;"><span>  availability_zone <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;ap-northeast-2a&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_subnet&#34;</span> <span style="color:#e6db74">&#34;dmz_public_secondery&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  vpc_id            <span style="color:#f92672">=</span> aws_vpc.dmz.id
+</span></span><span style="display:flex;"><span>  cidr_block        <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;10.1.2.0/24&#34;</span>
+</span></span><span style="display:flex;"><span>  availability_zone <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;ap-northeast-2c&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Application Public Subnets</span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_subnet&#34;</span> <span style="color:#e6db74">&#34;application_public_primary&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  vpc_id            <span style="color:#f92672">=</span> aws_vpc.application.id
+</span></span><span style="display:flex;"><span>  cidr_block        <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;10.2.1.0/24&#34;</span>
+</span></span><span style="display:flex;"><span>  availability_zone <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;ap-northeast-2a&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_subnet&#34;</span> <span style="color:#e6db74">&#34;application_public_secondery&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  vpc_id            <span style="color:#f92672">=</span> aws_vpc.application.id
+</span></span><span style="display:flex;"><span>  cidr_block        <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;10.2.2.0/24&#34;</span>
+</span></span><span style="display:flex;"><span>  availability_zone <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;ap-northeast-2c&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Application Private Subnets</span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_subnet&#34;</span> <span style="color:#e6db74">&#34;application_private_primary&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  vpc_id            <span style="color:#f92672">=</span> aws_vpc.application.id
+</span></span><span style="display:flex;"><span>  cidr_block        <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;10.2.3.0/24&#34;</span>
+</span></span><span style="display:flex;"><span>  availability_zone <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;ap-northeast-2a&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_subnet&#34;</span> <span style="color:#e6db74">&#34;application_private_secondery&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  vpc_id            <span style="color:#f92672">=</span> aws_vpc.application.id
+</span></span><span style="display:flex;"><span>  cidr_block        <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;10.2.4.0/24&#34;</span>
+</span></span><span style="display:flex;"><span>  availability_zone <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;ap-northeast-2c&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span></code></pre></div><p>VPC 및 Subnet은 네트워크 망 내부에서 성격에 맞는 컴퓨팅 리소스를 관리하기 위해 영역을 분리하는 작업에 의미를 둔다고 생각한다.</p>
+<p>이제 분리된 VPC 내부에서 출발지와 도착지를 지정하여 네트워크 트래픽을 내가 구성한 네트워크 망 내부에 목적지에 잘 도착할 수 있도록 설정하는 작업이 필요하다.</p>
+<h3 id="internet-gateway">Internet gateway</h3>
+<p>Terraform은 <code>aws_internet_gateway</code>를 이용해 VPC 내부에서 외부 인터넷을 접근하기 위한 인터넷 게이트워크를 생성할 수 있다. 이를 통해 VPC는 외부 네트워크와 통신할 수 있으며, 외부 리소스에서 인바운드 트래픽을 수신할 수 있다.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_internet_gateway&#34;</span> <span style="color:#e6db74">&#34;dmz&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  vpc_id <span style="color:#f92672">=</span> aws_vpc.dmz.id
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  tags <span style="color:#f92672">=</span> <span style="color:#f92672">{</span> Name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;DMZ Internet Gateway&#34;</span> <span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_internet_gateway&#34;</span> <span style="color:#e6db74">&#34;application&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  vpc_id <span style="color:#f92672">=</span> aws_vpc.application.id
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  tags <span style="color:#f92672">=</span> <span style="color:#f92672">{</span> Name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;Application Internet Gateway&#34;</span> <span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_route&#34;</span> <span style="color:#e6db74">&#34;dmz_public&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  route_table_id         <span style="color:#f92672">=</span> aws_vpc.dmz.default_route_table_id
+</span></span><span style="display:flex;"><span>  destination_cidr_block <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;0.0.0.0/0&#34;</span>
+</span></span><span style="display:flex;"><span>  gateway_id             <span style="color:#f92672">=</span> aws_internet_gateway.dmz.id
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_route&#34;</span> <span style="color:#e6db74">&#34;applicaton_public&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  route_table_id         <span style="color:#f92672">=</span> aws_vpc.application.default_route_table_id
+</span></span><span style="display:flex;"><span>  destination_cidr_block <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;0.0.0.0/0&#34;</span>
+</span></span><span style="display:flex;"><span>  gateway_id             <span style="color:#f92672">=</span> aws_internet_gateway.application.id
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span></code></pre></div><p>생성한 <code>aws_internet_gateway</code>은 앞서 생성한 DMZ/Application VPC를 통신할 수 있는 라우팅 규칙을 추가한다.</p>
+<h2 id="route-table">Route table</h2>
+<p>먼저 AWS에서 VPC를 생성하면 기본적으로 route table이 생성되게 된다. 따라서 terraform 내부에서 기본적으로 생성된 route table을 관리하기 위해서 terrafrom에서는 <code>aws_default_route_table</code>을 제공한다.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_default_route_table&#34;</span> <span style="color:#e6db74">&#34;application_main&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  default_route_table_id <span style="color:#f92672">=</span> aws_vpc.application.default_route_table_id
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  tags <span style="color:#f92672">=</span> <span style="color:#f92672">{</span> Name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;default public route table&#34;</span> <span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_route_table&#34;</span> <span style="color:#e6db74">&#34;application_private&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  vpc_id <span style="color:#f92672">=</span> aws_vpc.application.id
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  tags <span style="color:#f92672">=</span> <span style="color:#f92672">{</span> Name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;default private route table&#34;</span> <span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span></code></pre></div><h2 id="nat">NAT</h2>
+<p>NAT(Network Address Translation)은 IPv4 네트워크 시나리오에서 제한된 공인 IP 개수를 효과적으로 배분하기 위한 방법이다. NAT는 외부와 통신하기 위한 IP 하나만 할당받은 상태에서 많은 하위 PC가 네트워크와 통신할 수 있도록 도와준다. NAT를 사용할 경우 내부 PC를 외부에서 직접 접근할 수 없으며, 이로 인해 보안적인 측면도 상향할 수 있다.</p>
+<p>Terraform은 <code>aws_nat_gateway</code>를 이용해 리소스를 정의할 수 있으며 여기선 NAT가 사용할 공인 IP를 하나 할당받는다.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_eip&#34;</span> <span style="color:#e6db74">&#34;application_nat&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  domain <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;vpc&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  depends_on <span style="color:#f92672">=</span> <span style="color:#f92672">[</span>aws_internet_gateway.dmz, aws_internet_gateway.application<span style="color:#f92672">]</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>resource <span style="color:#e6db74">&#34;aws_nat_gateway&#34;</span> <span style="color:#e6db74">&#34;application&#34;</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  allocation_id <span style="color:#f92672">=</span> aws_eip.application_nat.id
+</span></span><span style="display:flex;"><span>  subnet_id     <span style="color:#f92672">=</span> aws_subnet.application_public_1a.id
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  depends_on <span style="color:#f92672">=</span> <span style="color:#f92672">[</span>aws_internet_gateway.dmz, aws_internet_gateway.application<span style="color:#f92672">]</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span></code></pre></div>
 </article>
 
             </div>
